@@ -9,49 +9,26 @@ const path = require('path');
 //                              HTTP Server
 //----------------------------------------------------------------------------
 
-
-
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
-const G_file_types = {
-  'css': 'text/css',
-  'gif': 'image/gif',
-  'html': 'text/html',
-  'ico': 'image/x-icon',
-  'jpg': 'image/jpeg',
-  'csv' : 'text/csv'
-};
-
-// default file
-let G_root_file = 'output.csv';
+let G_output_file = 'output.csv';
 
 // reply callback functions, called for any client HTTP request
 function reply(request, response) {
-  let filename = url.parse(request.url)['pathname'];
-
-  if (filename == '/') { // logical root
-    filename = G_root_file;
-  }
-  // If leading with '/'
-  else if (filename[0] == '/') {
-    // remove the leading '/'
-    filename = filename.substring(1);
-  }
+  //let filename = url.parse(request.url)['pathname'];
 
   console.log('HTTP <- tx '
     + request.socket.remoteAddress
     + ':'
-    + request.socket.remotePort
-    + ' ' + filename);
+    + request.socket.remotePort);
 
   // read file
-  fs.readFile(filename, (error, file) => {
+  fs.readFile(G_output_file, (error, file) => {
     let code;
     let type;
     let content;
     if (error) {
       code = 404;
       type = 'text/plain';
-      content = 'Unknown file: ' + filename;
+      contetn = error;
       console.log('HTTP <- tx ' +
         request.socket.remoteAddress
         + ':'
@@ -60,7 +37,7 @@ function reply(request, response) {
     }
     else {
       code = 200;
-      type = G_file_types[path.extname(filename)];
+      type = 'text/plain';
       content = file;
     }
     response.writeHead(code, type);
@@ -93,7 +70,6 @@ const rp = require('request-promise');
 const cheerio = require('cheerio');
 
 const G_source_url = 'https://www.st-andrews.ac.uk/sport/';
-const G_output_file = 'output.csv';
 
 let writer = fs.createWriteStream(G_output_file, {flags:'a'}); // Opens appending write stream 
 
@@ -119,4 +95,4 @@ function scrape() {
     });
 }
 
-setInterval(scrape, 60 * 60 * 1000); // scrape every hour
+setInterval(scrape, 1000); // scrape every second 
