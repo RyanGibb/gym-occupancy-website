@@ -1,0 +1,26 @@
+{
+  "name": "gym-occupancy-website",
+  "version": "1.0.0",
+  "description": "Logs the St Andrews uni gym occupancy and displays the results in a webpage.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RyanGibb/gym-occupancy-website.git"
+  },
+  "author": "Ryan Gibb",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RyanGibb/gym-occupancy-website/issues"
+  },
+  "homepage": "https://github.com/RyanGibb/gym-occupancy-website#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "express": "^4.16.4",
+    "promise": "^8.0.2",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2"
+  }
+}

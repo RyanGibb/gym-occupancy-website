@@ -1,77 +1,105 @@
-
-const url = require('url');
-const http = require('http');
-const os = require('os');
 const fs = require('fs');
-const path = require('path');
+const G_output_file = 'output.csv';
+
+//----------------------------------------------------------------------------
+//                              File IO
+//----------------------------------------------------------------------------
+
+function writeLine(line){
+  try {
+    let writer = fs.createWriteStream(G_output_file, {flags:'a'}); // Opens appending write stream
+    writer.write(line + "\n", function (error) {
+      if (error) {
+        console.log('Error writing to "' + G_output_file + '": ' + error);
+        return;
+      }
+      console.log('Wrote "' + line + '" to "' + G_output_file + '"');
+    })
+  }
+  catch (error) {
+    console.log('Error writing to "' + G_output_file + '":' + error);
+  }
+}
+
+//https://stackoverflow.com/questions/11874096/parse-large-json-file-in-nodejs
+function readFile(from, to, callback) {
+  let entries = [];
+  let reader = fs.createReadStream(G_output_file);
+  let buffer = '';
+
+  reader.on('error', function(error){ 
+    console.log('Error reading from "' + G_output_file + '": ' + error);
+    callback('{"responce":"error"}');
+   });
+
+  reader.on('data', function(data) {
+      buffer += data.toString(); // when data is read, stash it in a string buffer
+      pump(); // then process the buffer
+  });
+
+  function pump() {
+      let pos;
+      while ((pos = buffer.indexOf('\n')) >= 0) { // keep going while there's a newline somewhere in the buffer
+          if (pos == 0) { // if there's more than one newline in a row, the buffer will now start with a newline
+              buffer = buffer.slice(1); // discard it
+              continue; // so that the next iteration will start with data
+          }
+          processLine(buffer.slice(0,pos)); // hand off the line
+          buffer = buffer.slice(pos+1); // and slice the processed data off the buffer
+      }
+  }
+  
+  function processLine(line) { // here's where we do something with a line
+      if (line[line.length-1] == '\r') line=line.substr(0,line.length-1); // discard CR (0x0D)
+      if (line.length > 0) { // ignore empty lines
+          try {
+            var obj = JSON.parse(line); // parse the JSON
+            entries.push(obj);
+          }
+          catch (error) {
+            console.log('Error parsing JSON from "' + G_output_file + '": ' + error);
+          }
+      }
+  }
+
+  reader.on('end', function() {
+    callback(JSON.stringify(entries));
+  });
+}
 
 //----------------------------------------------------------------------------
 //                              HTTP Server
 //----------------------------------------------------------------------------
 
-let G_output_file = 'output.csv';
+const express = require('express');
 
-// reply callback functions, called for any client HTTP request
-function reply(request, response) {
-  //let filename = url.parse(request.url)['pathname'];
+const port = 3000
+const app = express();
+const static_dir = 'static';
 
-  console.log('HTTP <- tx '
-    + request.socket.remoteAddress
-    + ':'
-    + request.socket.remotePort);
+app.use(express.static(static_dir));
 
-  // read file
-  fs.readFile(G_output_file, (error, file) => {
-    let code;
-    let type;
-    let content;
-    if (error) {
-      code = 404;
-      type = 'text/plain';
-      contetn = error;
-      console.log('HTTP <- tx ' +
-        request.socket.remoteAddress
-        + ':'
-        + request.socket.remotePort
-        + ' unknown file: ' + filename);
-    }
-    else {
-      code = 200;
-      type = 'text/plain';
-      content = file;
-    }
-    response.writeHead(code, type);
-    response.write(content);
-    response.end();
-  });
-}
-
-let myPort = process.getuid(); /** type 'id' on Linux for uid value **/
-if (myPort < 1024) myPort += 10000; // do not use privileged ports
-
-hostname = os.hostname();
-
-let httpServer = http.createServer(reply);
-
-httpServer.listen(myPort);
-console.log('listening for HTTP requests: ' + hostname + ':' + myPort);
-
-httpServer.on('clientError', (error, socket) => {
-  console.log(error);
-  socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+app.get('/data.json', function (req, res) {
+  res.set('Content-Type', 'application/json');
+  let from = req.query.from;
+  let to = req.query.to;
+  readFile(from, to, function(entries) {
+    res.set('Content-Type', 'application/json');
+    res.send(entries);
+  })
 });
+
+app.listen(port);
+console.log("Listening for HTTP requests on port: " + port);
 
 //----------------------------------------------------------------------------
 //                              Web Scraper
 //----------------------------------------------------------------------------
 
-//const express = require('express');
 const rp = require('request-promise');
 const cheerio = require('cheerio');
 
 const G_source_url = 'https://www.st-andrews.ac.uk/sport/';
-
-let writer = fs.createWriteStream(G_output_file, {flags:'a'}); // Opens appending write stream 
 
 function scrape() {
   rp(G_source_url)
@@ -81,17 +109,12 @@ function scrape() {
       let after = '%';
       let occupancy = text.substring(text.indexOf(before) + before.length, text.indexOf(after));
       let timestamp = new Date();
-      let line = timestamp + "," + occupancy;
-      writer.write(line + "\n", function (error) {
-        if (error) {
-          console.log('Error writing to "' + G_output_file + '": ' + error);
-          return;
-        }
-        console.log('Wrote "' + line + '" to "' + G_output_file + '"');
-      })
+      let lineObject = { timestamp, occupancy };
+      let line = JSON.stringify(lineObject);
+      writeLine(line);
     })
-    .catch(function (err) {
-      //handle error
+    .catch(function (error) {
+      console.log('Error in request promise for "' + G_source_url + '": ' + error);
     });
 }
 
