@@ -1,5 +1,5 @@
 const fs = require('fs');
-const G_output_file = 'output.csv';
+const G_output_file = 'occupancy.json';
 
 //----------------------------------------------------------------------------
 //                              File IO
