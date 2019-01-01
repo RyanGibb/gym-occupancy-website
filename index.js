@@ -106,15 +106,18 @@ function scrape() {
     });
 }
 
-setInterval(scrape, 1000); // scrape every second 
+let interval = 1000 * 60 * 60; //every hour (in ms)
+
+setInterval(scrape, interval); //scrape every hour
 
 //----------------------------------------------------------------------------
 //                              HTTP Server
 //----------------------------------------------------------------------------
 
 const express = require('express');
+const http = require('http');
 
-const port = 3000
+const port = 5000
 const app = express();
 const static_dir = 'static';
 
@@ -140,17 +143,18 @@ app.get('/data.json', function (req, res) {
   })
 });
 
-app.listen(port);
-console.log('Listening for HTTP requests on port: ' + port);
+const httpServer = http.createServer(app);
+
+httpServer.listen(port, function () {
+  console.log('Listening for HTTP requests on port: ' + port);
+});
 
 //----------------------------------------------------------------------------
 //                              WebSocket Server
 //----------------------------------------------------------------------------
 
-const http = require('http');
 const ws = require('ws');
 
-const httpServer = http.createServer(app);
 const wsServer = new ws.Server({server: httpServer});
 
 wsServer.on('connection', function(ws, req) {
@@ -175,15 +179,22 @@ wsServer.on('connection', function(ws, req) {
       return;
     }
     
-    // Dir Info
-    if (receivedMessage['request'] == 'dirinfo') {
-      let dirpath = receivedMessage['dirpath'];
-      if(!dirpath) {
+    if (receivedMessage.request == 'range') {
+      if(!receivedMessage.parameters) {
         // Could send error to client, if protocol was extended
         return;
       }
-      
-      //....
+      let from = new Date(receivedMessage.parameters.from);
+      let to = new Date(receivedMessage.parameters.to);
+      // Could check for null here      
+      readFile(from, to, function(data) {
+        let responce = "data";
+        let message = {responce, data};
+        let messageString = JSON.stringify(message);
+        ws.send(messageString);
+        console.log("WS <- tx " + req.connection.remoteAddress + ":" 
+              + req.connection.remotePort + " " + messageString);
+      });
     }
     
     //else {
