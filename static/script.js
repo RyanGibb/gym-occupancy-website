@@ -89,7 +89,7 @@ function graphData(data) {
       type: 'line',
       data: {
           labels: data.map(function(element) {
-            return new Date(element.timestamp).toLocaleString();
+            return new Date(element.datetime).toLocaleString();
           }),
           datasets: [{
               label: 'Occupancy (%)',
