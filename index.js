@@ -5,12 +5,12 @@
 const fs = require('fs');
 const G_output_file = 'occupancy.csv';
 
-function writeEntry(dateTime, occupancy){
+function writeEntry(datetime, occupancy){
   try {
     let file = G_output_file;
     // Opens appending write stream
     let writer = fs.createWriteStream(file, {flags:'a'});
-    let line = dateTime + ',' + occupancy;
+    let line = datetime + ',' + occupancy;
     writer.write(line + '\n', function (error) {
       if (error) {
         console.log('Error writing to "' + file + '": ' + error);
@@ -24,8 +24,23 @@ function writeEntry(dateTime, occupancy){
   }
 }
 
-function readFile(from, to, callback) {
+function readFileRange(from, to, callback) {
   let entries = [];
+  function procesEntry(datetime, occupancy, reader) {
+    if (datetime >= from) {
+      entries.push({datetime, occupancy});
+    }
+    if (to !== null && datetime >= to) {
+      reader.destroy();
+      return true;
+    }
+  }
+  readFile(procesEntry, function(error) {
+    callback(error, JSON.stringify(entries));
+  });
+}
+
+function readFile(procesEntry, callback) {
   let file = G_output_file;
 
   let reader = fs.createReadStream(file);
@@ -56,13 +71,9 @@ function readFile(from, to, callback) {
     if (line.length > 0) {
       try {
         lineSplit = line.split(",");
-        let timestamp = new Date(lineSplit[0]);
+        let datetime = new Date(lineSplit[0]);
         let occupancy = lineSplit[1];
-        if (timestamp >= from) {
-          entries.push({timestamp, occupancy});
-        }
-        if (to !== null && timestamp >= to) {
-          reader.destroy();
+        if (procesEntry(datetime, occupancy, reader)) {
           return true;
         }
       }
@@ -73,7 +84,7 @@ function readFile(from, to, callback) {
   }
 
   reader.on('close', function () {
-    callback(null, JSON.stringify(entries));
+    callback(null);
   });
 }
 
@@ -92,12 +103,12 @@ const waitTime = 1000 * 5; // 5 seconds (in ms)
 function scrape(tries, waitTime) {
   rp(G_source_url)
     .then(function (html) {
-      let dateTime = new Date().toJSON();
+      let datetime = new Date().toJSON();
       let text = cheerio('div.gym-box > h3', html).text();
       let before = 'Occupancy: ';
       let after = '%';
       let occupancy = text.substring(text.indexOf(before) + before.length, text.indexOf(after));
-      writeEntry(dateTime, occupancy);
+      writeEntry(datetime, occupancy);
     })
     .catch(function (error) {
       console.log('Error in request promise for "' + G_source_url + '": ' + error);
@@ -124,27 +135,29 @@ var task = cron.schedule('* * * * *', () =>  { //Run every minute
 const express = require('express');
 const http = require('http');
 
-const port = 5000
+let port = process.getuid(); // type "id" on Linux for uid value
+if (port < 1024) port += 10000; // do not use privileged ports
+
 const app = express();
 const static_dir = 'static';
 
 app.use(express.static(static_dir));
 
 app.get('/data.json', function (req, res) {
-  res.set('Content-Type', 'application/json');
-  if (!req.query.from) {
-    var from = null;
+  let from = null;
+  if (req.query.from) {
+    from = new Date(req.query.from);
   }
-  else{
-    var from = new Date(req.query.from);
+  let to = null;
+  if (req.query.to) {
+    to = new Date(req.query.to);
   }
-  if (!req.query.to) {
-    var to = null;
-  }
-  else{ 
-    var to = new Date(req.query.to);
-  }
-  readFile(from, to, function(json) {
+  readFileRange(from, to, function(error, json) {
+    if (error) {
+      res.set('Content-Type', 'text/plain');
+      res.send("Error reading file - " + error);
+      return;
+    }
     res.set('Content-Type', 'application/json');
     res.send(json);
   })
@@ -196,7 +209,7 @@ wsServer.on('connection', function(ws, req) {
           to = new Date(receivedMessage.parameters.to);
         }
       }  
-      readFile(from, to, function(error, data) {
+      readFileRange(from, to, function(error, data) {
         if (error) {
           respondError(ws, req, 'error reading file', error);
           return;
