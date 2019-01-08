@@ -108,7 +108,15 @@ function graphData(data) {
                       beginAtZero:true,
                       max: 100
                   }
-              }]
+              }],
+              xAxes: [{
+                type: 'time',
+                time: {
+                  displayFormats: {
+                    minute: 'h:mm a'
+                  }
+                }
+            }]
           }
       }
   });
