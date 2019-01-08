@@ -1,35 +1,38 @@
-const fs = require('fs');
-const G_output_file = 'occupancy.csv';
-
 //----------------------------------------------------------------------------
 //                              File IO
 //----------------------------------------------------------------------------
 
-function writeEntry(timestamp, occupancy){
+const fs = require('fs');
+const G_output_file = 'occupancy.csv';
+
+function writeEntry(dateTime, occupancy){
   try {
-    let writer = fs.createWriteStream(G_output_file, {flags:'a'}); // Opens appending write stream
-    line = timestamp + ',' + occupancy;
+    let file = G_output_file;
+    let writer = fs.createWriteStream(file, {flags:'a'}); // Opens appending write stream
+    let line = dateTime + ',' + occupancy;
     writer.write(line + '\n', function (error) {
       if (error) {
-        console.log('Error writing to "' + G_output_file + '": ' + error);
+        console.log('Error writing to "' + file + '": ' + error);
         return;
       }
-      console.log('Wrote "' + line + '" to "' + G_output_file + '"');
+      console.log('Wrote "' + line + '" to "' + file + '"');
     })
   }
   catch (error) {
-    console.log('Error writing to "' + G_output_file + '":' + error);
+    console.log('Error writing to "' + file + '":' + error);
   }
 }
 
 //https://stackoverflow.com/questions/11874096/parse-large-json-file-in-nodejs
 function readFile(from, to, callback) {
   let entries = [];
-  let reader = fs.createReadStream(G_output_file);
+  let file = G_output_file;
+
+  let reader = fs.createReadStream(file);
   let buffer = '';
 
   reader.on('error', function(error){ 
-    console.log('Error reading from "' + G_output_file + '": ' + error);
+    console.log('Error reading from "' + file + '": ' + error);
     callback('{"responce":"error"}');
    });
 
@@ -89,20 +92,36 @@ function readFile(from, to, callback) {
 const rp = require('request-promise');
 const cheerio = require('cheerio');
 
-const G_source_url = 'https://www.st-andrews.ac.uk/sport/';
+const G_source_url = 'https://www.st-andrews.ac.uk/sport/index.php';
 
-function scrape() {
+const maxNumberOfTries = 3;
+const waitTime = 1000 * 3; // 5 seconds (in ms)
+
+function scrape(tries) {
   rp(G_source_url)
     .then(function (html) {
-      let timestamp = new Date().toJSON();
+      let dateTime = new Date().toJSON();
       let text = cheerio('div.gym-box > h3', html).text();
       let before = 'Occupancy: ';
       let after = '%';
       let occupancy = text.substring(text.indexOf(before) + before.length, text.indexOf(after));
-      writeEntry(timestamp, occupancy);
+      writeEntry(dateTime, occupancy);
     })
     .catch(function (error) {
-      console.log('Error in request promise for "' + G_source_url + '": ' + error);
+      console.log(new Date().toJSON() + ' Error in request promise for "' + G_source_url + 
+          '": ' + error);
+      if (tries === undefined) {
+        tries = 1;
+      }
+      console.log('Try number ' + tries);
+      if (tries == maxNumberOfTries) {
+        console.log('Max tries reached');
+      }
+      else {
+        setTimeout(function() {
+          scrape(tries+1)
+        }, waitTime);
+      }
     });
 }
 
