@@ -164,9 +164,10 @@ app.get('/data.json', function (req, res) {
 });
 
 const httpServer = http.createServer(app);
+const localhost = '127.0.0.1';
 
-httpServer.listen(port, function () {
-  console.log('Listening for HTTP requests on port: ' + port);
+httpServer.listen(port, localhost, function () {
+  console.log('Listening for HTTP requests on localhost, port ' + port);
 });
 
 //----------------------------------------------------------------------------
@@ -178,18 +179,18 @@ const ws = require('ws');
 const wsServer = new ws.Server({server: httpServer});
 
 wsServer.on('connection', function(ws, req) {
-  console.log('WS connection ' + req.connection.remoteAddress + ':' 
-      + req.connection.remotePort);
+  //console.log('WS connection ' + req.connection.remoteAddress + ':' 
+    //  + req.connection.remotePort);
   
   ws.on('close', function(code, message) {
-    console.log('WS disconnection ' + ws._socket.remoteAddress + ':' 
-        + req.connection.remotePort + ' Code ' + code);
+    //console.log('WS disconnection ' + ws._socket.remoteAddress + ':' 
+      //  + req.connection.remotePort + ' Code ' + code);
   });
 
   ws.on('message', function(data) {
     let receivedMessageString = data.toString();
-    console.log('WS -> rx ' + req.connection.remoteAddress + ':' 
-        + req.connection.remotePort + ' ' + receivedMessageString);
+    //console.log('WS -> rx ' + req.connection.remoteAddress + ':' 
+      //  + req.connection.remotePort + ' ' + receivedMessageString);
 
     try {
       var receivedMessage = JSON.parse(receivedMessageString);
@@ -235,8 +236,8 @@ function respondError(ws, req, human_readable_error, error) {
 function respond(ws, req, responceMessage) {
   var messageString = JSON.stringify(responceMessage);
   ws.send(messageString);
-  console.log('WS <- tx ' + req.connection.remoteAddress + ':' 
-        + req.connection.remotePort + ' ' + messageString);
+  //console.log('WS <- tx ' + req.connection.remoteAddress + ':' 
+    //    + req.connection.remotePort + ' ' + messageString);
 };
 
 console.log('WebSocket server running');
