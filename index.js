@@ -24,7 +24,6 @@ function writeEntry(dateTime, occupancy){
   }
 }
 
-//https://stackoverflow.com/questions/11874096/parse-large-json-file-in-nodejs
 function readFile(from, to, callback) {
   let entries = [];
   let file = G_output_file;
@@ -38,48 +37,40 @@ function readFile(from, to, callback) {
    });
 
   reader.on('data', function(data) {
-      buffer += data.toString(); // when data is read, stash it in a string buffer
-      pump(); // then process the buffer
+      buffer += data.toString();
+      pump();
   });
 
   function pump() {
-      let pos;
-      while ((pos = buffer.indexOf('\n')) >= 0) { // keep going while there's a newline somewhere in the buffer
-          if (pos == 0) { // if there's more than one newline in a row, the buffer will now start with a newline
-              buffer = buffer.slice(1); // discard it
-              continue; // so that the next iteration will start with data
-          }
-          if (processLine(buffer.slice(0,pos))) { // hand off the line
+      let newlineIndex;
+      while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+          // proccess line
+          if (processLine(buffer.slice(0, newlineIndex))) {
             return; // if processLine returns true stop processing buffer
           }
-          buffer = buffer.slice(pos+1); // and slice the processed data off the buffer
+          buffer = buffer.slice(newlineIndex+1); // slice the processed data off the buffer
       }
   }
   
-  function processLine(line) { // here's where we do something with a line
-      //if (line[line.length-1] == '\r') line=line.substr(0,line.length-1); // discard CR (0x0D)
-      if (line.length > 0) { // ignore empty lines
-          try {
-            lineSplit = line.split(",");
-            let timestamp = new Date(lineSplit[0]);
-            let occupancy = lineSplit[1];
-            if (timestamp >= from) {
-              entries.push({timestamp, occupancy});
-            }
-            if (to !== null && timestamp >= to) {
-              reader.destroy();
-              return true;
-            }
-          }
-          catch (error) {
-            console.log('Error parsing JSON from "' + G_output_file + '": ' + error);
-          }
+  function processLine(line) {
+    if (line.length > 0) {
+      try {
+        lineSplit = line.split(",");
+        let timestamp = new Date(lineSplit[0]);
+        let occupancy = lineSplit[1];
+        if (timestamp >= from) {
+          entries.push({timestamp, occupancy});
+        }
+        if (to !== null && timestamp >= to) {
+          reader.destroy();
+          return true;
+        }
       }
+      catch (error) {
+        console.log('Error parsing JSON from "' + G_output_file + '": ' + error);
+      }
+    }
   }
-
-  reader.on('end', function() {
-    // no more data
-  });
 
   reader.on('close', function () {
     callback(null, JSON.stringify(entries));
@@ -95,10 +86,10 @@ const cheerio = require('cheerio');
 
 const G_source_url = 'https://www.st-andrews.ac.uk/sport/index.php';
 
-const maxNumberOfTries = 3;
-const waitTime = 1000 * 3; // 5 seconds (in ms)
+const numberOfTries = 3;
+const waitTime = 1000 * 5; // 5 seconds (in ms)
 
-function scrape(tries) {
+function scrape(tries, waitTime) {
   rp(G_source_url)
     .then(function (html) {
       let dateTime = new Date().toJSON();
@@ -109,18 +100,12 @@ function scrape(tries) {
       writeEntry(dateTime, occupancy);
     })
     .catch(function (error) {
-      console.log(new Date().toJSON() + ' Error in request promise for "' + G_source_url + 
-          '": ' + error);
-      if (tries === undefined) {
-        tries = 1;
-      }
-      console.log('Try number ' + tries);
-      if (tries == maxNumberOfTries) {
-        console.log('Max tries reached');
-      }
-      else {
+      console.log('Error in request promise for "' + G_source_url + '": ' + error);
+      if (tries > 1) {
+        let triesLeft = tries - 1;
+        console.log('Tries left: ' + triesLeft);
         setTimeout(function() {
-          scrape(tries+1)
+          scrape(triesLeft, waitTime);
         }, waitTime);
       }
     });
@@ -129,7 +114,7 @@ function scrape(tries) {
 var cron = require('node-cron');
  
 var task = cron.schedule('* * * * *', () =>  { //Run every minute
-  scrape();
+  scrape(numberOfTries, waitTime);
 });
 
 //----------------------------------------------------------------------------
@@ -192,50 +177,47 @@ wsServer.on('connection', function(ws, req) {
     let receivedMessageString = data.toString();
     console.log('WS -> rx ' + req.connection.remoteAddress + ':' 
         + req.connection.remotePort + ' ' + receivedMessageString);
-    
-    var responceMessage;
 
     try {
       var receivedMessage = JSON.parse(receivedMessageString);
     }
     catch(error) {
-      let responce = 'error';
-      let human_readable_error = 'Error parsing JSON request'
-      responceMessage = {responce, human_readable_error, error};
-      respond(ws, req, responceMessage);
+      respondError(ws, req, 'error parsing JSON request', error);
+      return;
     }
     
     if (receivedMessage.request == 'range') {
-      if(!receivedMessage.parameters) {
-        // Could send error to client, if protocol was extended
-        return;
-      }
-      let from = new Date(receivedMessage.parameters.from);
-      let to = new Date(receivedMessage.parameters.to);
-      // Could check for null here      
+      let from = null, to = null;
+      if(receivedMessage.parameters) {
+        if (receivedMessage.parameters.from) {
+          from = new Date(receivedMessage.parameters.from);
+        }
+        if (receivedMessage.parameters.to) {
+          to = new Date(receivedMessage.parameters.to);
+        }
+      }  
       readFile(from, to, function(error, data) {
         if (error) {
-          let responce = 'error';
-          let human_readable_error = 'Error reading file';
-          responceMessage = {responce, human_readable_error, error};
-          respond(ws, req, responceMessage);
+          respondError(ws, req, 'error reading file', error);
+          return;
         }
-        else {
-          let responce = 'data';
-          responceMessage = {responce, data};
-          respond(ws, req, responceMessage);
-        }
+        let responce = 'data';
+        responceMessage = {responce, data};
+        respond(ws, req, responceMessage);
       });
     }
     else {
-        let responce = 'error';
-        let human_readable_error = 'Unsupported request "' + receivedMessage.request + '"';
-        responceMessage = {responce, human_readable_error};
-        respond(ws, req, responceMessage);
+      respondError(ws, req, 'unsupported request "' + receivedMessage.request + '"');
     }
-    
+
   })
 });
+
+function respondError(ws, req, human_readable_error, error) {
+  let responce = 'error';
+  responceMessage = {responce, human_readable_error, error};
+  respond(ws, req, responceMessage);
+}
 
 function respond(ws, req, responceMessage) {
   var messageString = JSON.stringify(responceMessage);
