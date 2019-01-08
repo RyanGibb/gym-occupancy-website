@@ -11,17 +11,32 @@
   <link href="style.css" rel="stylesheet">
   <!--see https://cdnjs.com/libraries/Chart.js-->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js"></script>
+  <script src="script.js"></script>
 </head>
 
 <body>
     <h1> St. Andrews Uni Gym Occupancy </h1>
-    <button onclick="requestLast48Hrs()"> Last 48 hrs </button>
-    <button onclick="requestToday()"> Today </button>
-    <button onclick="requestYesterday()"> Yesterday </button>
-    <button onclick="requestThisWeek()"> ThisWeek </button>
-    <button onclick="requestLastWeek()"> LastWeek </button>
-    <canvas id="myChart" width="400" height="200"></canvas>
-    <script src="script.js"></script>
+    <div id="buttons">
+      <button onclick="requestLast48Hrs()"> Last 48 hrs </button>
+      <button onclick="requestToday()"> Today </button>
+      <button onclick="requestYesterday()"> Yesterday </button>
+      <button onclick="requestThisWeek()"> This Week </button>
+      <button onclick="requestLastWeek()"> Last Week </button>
+      <button onclick="requestThisMonth()"> This Month </button>
+      <button onclick="requestLastMonth()"> Last Month </button>
+      <button onclick="requestAll()"> All </button>
+    </div>
+    <br>
+    <div id="inputBoxes">
+      From:
+      <input type="text" id="from">
+      To:
+      <input type="text" id="to">
+      <button onclick="requestInputBoxRange()"> Submit </button>
+    </div>
+
+    <canvas id="occupancyChart" width="400" height="200"></canvas>
+    <script> setup() </script>
 </body>
 
 </html>

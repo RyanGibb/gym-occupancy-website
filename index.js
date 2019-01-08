@@ -27,12 +27,12 @@ function writeEntry(datetime, occupancy){
 function readFileRange(from, to, callback) {
   let entries = [];
   function procesEntry(datetime, occupancy, reader) {
-    if (datetime >= from) {
-      entries.push({datetime, occupancy});
-    }
-    if (to !== null && datetime >= to) {
+    if (to !== null && datetime > to) {
       reader.destroy();
       return true;
+    }
+    if (datetime >= from) {
+      entries.push({datetime, occupancy});
     }
   }
   readFile(procesEntry, function(error) {
@@ -176,24 +176,24 @@ httpServer.listen(port, localhost, function () {
 
 const ws = require('ws');
 
+const maxLogMessageLength = 200;
+
 const wsServer = new ws.Server({server: httpServer});
 
 wsServer.on('connection', function(ws, req) {
-  //console.log('WS connection ' + req.connection.remoteAddress + ':' 
-    //  + req.connection.remotePort);
+  console.log('WS connection');
   
   ws.on('close', function(code, message) {
-    //console.log('WS disconnection ' + ws._socket.remoteAddress + ':' 
-      //  + req.connection.remotePort + ' Code ' + code);
+    console.log('WS disconnection - Code ' + code);
   });
 
   ws.on('message', function(data) {
-    let receivedMessageString = data.toString();
-    //console.log('WS -> rx ' + req.connection.remoteAddress + ':' 
-      //  + req.connection.remotePort + ' ' + receivedMessageString);
+    let messageString = data.toString();
+    console.log('WS -> rx ' + (messageString.length > maxLogMessageLength ? messageString.slice(0, maxLogMessageLength) + "..." : messageString)
+    );
 
     try {
-      var receivedMessage = JSON.parse(receivedMessageString);
+      var receivedMessage = JSON.parse(messageString);
     }
     catch(error) {
       respondError(ws, req, 'error parsing JSON request', error);
@@ -201,22 +201,24 @@ wsServer.on('connection', function(ws, req) {
     }
     
     if (receivedMessage.request == 'range') {
+      let parameters = receivedMessage.parameters;
       let from = null, to = null;
-      if(receivedMessage.parameters) {
-        if (receivedMessage.parameters.from) {
-          from = new Date(receivedMessage.parameters.from);
-        }
-        if (receivedMessage.parameters.to) {
-          to = new Date(receivedMessage.parameters.to);
-        }
-      }  
+      if(!parameters) {
+        respondError(ws, req, 'missing parameters for "range" request');
+      }
+      if (parameters.from) {
+        from = new Date(receivedMessage.parameters.from);
+      }
+      if (parameters.to) {
+        to = new Date(parameters.to);
+      }
       readFileRange(from, to, function(error, data) {
         if (error) {
           respondError(ws, req, 'error reading file', error);
           return;
         }
         let responce = 'data';
-        responceMessage = {responce, data};
+        responceMessage = {responce, parameters, data};
         respond(ws, req, responceMessage);
       });
     }
@@ -233,11 +235,13 @@ function respondError(ws, req, human_readable_error, error) {
   respond(ws, req, responceMessage);
 }
 
+
+
 function respond(ws, req, responceMessage) {
   var messageString = JSON.stringify(responceMessage);
   ws.send(messageString);
-  //console.log('WS <- tx ' + req.connection.remoteAddress + ':' 
-    //    + req.connection.remotePort + ' ' + messageString);
+  console.log('WS <- tx ' + (messageString.length > maxLogMessageLength ? messageString.slice(0, maxLogMessageLength) + "..." : messageString)
+  );
 };
 
 console.log('WebSocket server running');
