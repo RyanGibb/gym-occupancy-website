@@ -106,9 +106,11 @@ function scrape() {
     });
 }
 
-let interval = 1000 * 60 * 60; //every hour (in ms)
-
-setInterval(scrape, interval); //scrape every hour
+var cron = require('node-cron');
+ 
+var task = cron.schedule('* * * * *', () =>  { //Run every minute
+  scrape();
+});
 
 //----------------------------------------------------------------------------
 //                              HTTP Server
