@@ -8,7 +8,8 @@ const G_output_file = 'occupancy.csv';
 function writeEntry(dateTime, occupancy){
   try {
     let file = G_output_file;
-    let writer = fs.createWriteStream(file, {flags:'a'}); // Opens appending write stream
+    // Opens appending write stream
+    let writer = fs.createWriteStream(file, {flags:'a'});
     let line = dateTime + ',' + occupancy;
     writer.write(line + '\n', function (error) {
       if (error) {
@@ -33,7 +34,7 @@ function readFile(from, to, callback) {
 
   reader.on('error', function(error){ 
     console.log('Error reading from "' + file + '": ' + error);
-    callback('{"responce":"error"}');
+    callback(error);
    });
 
   reader.on('data', function(data) {
@@ -81,7 +82,7 @@ function readFile(from, to, callback) {
   });
 
   reader.on('close', function () {
-    callback(JSON.stringify(entries));
+    callback(null, JSON.stringify(entries));
   });
 }
 
@@ -191,13 +192,17 @@ wsServer.on('connection', function(ws, req) {
     let receivedMessageString = data.toString();
     console.log('WS -> rx ' + req.connection.remoteAddress + ':' 
         + req.connection.remotePort + ' ' + receivedMessageString);
-    let receivedMessage;
+    
+    var responceMessage;
+
     try {
-      receivedMessage = JSON.parse(receivedMessageString);
+      var receivedMessage = JSON.parse(receivedMessageString);
     }
     catch(error) {
-      console.log('Error parsing JSON message: ' + error);
-      return;
+      let responce = 'error';
+      let human_readable_error = 'Error parsing JSON request'
+      responceMessage = {responce, human_readable_error, error};
+      respond(ws, req, responceMessage);
     }
     
     if (receivedMessage.request == 'range') {
@@ -208,21 +213,35 @@ wsServer.on('connection', function(ws, req) {
       let from = new Date(receivedMessage.parameters.from);
       let to = new Date(receivedMessage.parameters.to);
       // Could check for null here      
-      readFile(from, to, function(data) {
-        let responce = "data";
-        let message = {responce, data};
-        let messageString = JSON.stringify(message);
-        ws.send(messageString);
-        console.log("WS <- tx " + req.connection.remoteAddress + ":" 
-              + req.connection.remotePort + " " + messageString);
+      readFile(from, to, function(error, data) {
+        if (error) {
+          let responce = 'error';
+          let human_readable_error = 'Error reading file';
+          responceMessage = {responce, human_readable_error, error};
+          respond(ws, req, responceMessage);
+        }
+        else {
+          let responce = 'data';
+          responceMessage = {responce, data};
+          respond(ws, req, responceMessage);
+        }
       });
     }
+    else {
+        let responce = 'error';
+        let human_readable_error = 'Unsupported request "' + receivedMessage.request + '"';
+        responceMessage = {responce, human_readable_error};
+        respond(ws, req, responceMessage);
+    }
     
-    //else {
-        // Could send error to client, if protocol was extended
-    //}
-
   })
 });
+
+function respond(ws, req, responceMessage) {
+  var messageString = JSON.stringify(responceMessage);
+  ws.send(messageString);
+  console.log('WS <- tx ' + req.connection.remoteAddress + ':' 
+        + req.connection.remotePort + ' ' + messageString);
+};
 
 console.log('WebSocket server running');
