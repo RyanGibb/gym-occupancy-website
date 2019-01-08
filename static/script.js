@@ -5,7 +5,7 @@
 //                              WebSocket Client
 //----------------------------------------------------------------------------
 
-let wsUrl = "ws://" + location.hostname + ":" + location.port;
+let wsUrl = "wss://" + location.hostname + ":" + location.port + "/gym-occupancy/";
 let ws = new WebSocket(wsUrl);
 
 ws.onopen = function() {
