@@ -22,13 +22,13 @@ ws.onerrer = function(e) {
 
 ws.onmessage = function(m) {
   let messageString = m.data;
-  console.log("<- rx " + messageString);
+  //console.log("<- rx " + messageString);
   let message = JSON.parse(messageString);
   handleMessage(message);
 }
 
 function sendMessage(messageString) {
-  console.log("-> tx " + messageString);
+  //console.log("-> tx " + messageString);
   ws.send(messageString);
 }
 
@@ -36,12 +36,39 @@ function sendMessage(messageString) {
 //                              Request Functions
 //----------------------------------------------------------------------------
 
-function requestRange(from, to, unit) {
+function requestRange(from, to, graphUnit, displayFormat) {
     let request = "range";
-    let parameters = {from, to, unit};
+    if (graphUnit == "") {
+      graphUnit = undefined;
+    }
+    if (displayFormat == "" || displayFormat == "default") {
+      displayFormat = undefined;
+    }
+    let parameters = {from, to, graphUnit, displayFormat};
     let message = {request, parameters};
     let messageString = JSON.stringify(message);
     sendMessage(messageString);
+    if(typeof from != "string") {
+      from = from.toJSON();
+    }
+    if(typeof to != "string") {
+      to = to.toJSON();
+    }
+    from = from.split("T");
+    to = to.split("T");
+    document.getElementById("from_date").value = from[0];
+    document.getElementById("from_time").value = from[1].slice(0, -1);
+    document.getElementById("to_date").value = to[0];
+    document.getElementById("to_time").value = to[1].slice(0, -1);
+    if (graphUnit == undefined) {
+      graphUnit = "";
+      displayFormat = "default";
+    }
+    else if (displayFormat == undefined) {
+      displayFormat = "default";
+    }
+    document.getElementById("graph_unit").value = graphUnit;
+    document.getElementById("display_format").value = displayFormat;
 }
 
 const ONE_HOUR = 60 * 60 * 1000; // ms
@@ -92,7 +119,7 @@ function requestThisWeek() {
   let to = new Date(now)
   to.setDate(saturday);
   to.setHours(23, 59, 59, 999);
-  requestRange(from, to, "day");
+  requestRange(from, to, "day", "ddd/MMM D");
 }
 
 function requestLastWeek() {
@@ -106,7 +133,7 @@ function requestLastWeek() {
   let to = new Date(now)
   to.setDate(lastSatuday);
   to.setHours(23, 59, 59, 999);
-  requestRange(from, to, "day");
+  requestRange(from, to, "day", "ddd/MMM D");
 }
 
 function requestThisMonth() {
@@ -136,9 +163,13 @@ function requestAll() {
 }
 
 function requestInputBoxRange() {
-  let from = document.getElementById("from").value;
-  let to = document.getElementById("to").value;
-  requestRange(from, to);
+  let from = document.getElementById("from_date").value + "T" +
+    document.getElementById("from_time").value + "Z";
+  let to = document.getElementById("to_date").value + "T" +
+    document.getElementById("to_time").value + "Z";
+  let graphUnit = document.getElementById("graph_unit").value;
+  let displayFormat = document.getElementById("display_format").value;
+  requestRange(from, to, graphUnit, displayFormat);
 }
 
 //----------------------------------------------------------------------------
@@ -154,7 +185,7 @@ function handleMessage(message) {
 var occupancyChart;
 
 function graphData(data, parameters) {
-  let options = {
+  let graphOptions = {
     type: 'line',
     data: {
         labels: data.map(function(element) {
@@ -189,21 +220,38 @@ function graphData(data, parameters) {
             ticks: {
               source: 'auto'
             },
-            displayFormats: {
-              day: "MMM D/ddd"
-            },
             time: {
-              unit: parameters.unit,
+              unit: parameters.graphUnit,
               min: new Date(parameters.from),
-              max: new Date(parameters.to)
+              max: new Date(parameters.to),
+              displayFormats: {}
             },
           }]
         }
     }
   }
+  if (parameters.displayFormat) {
+    graphOptions.options.scales.xAxes[0].time.displayFormats[parameters.graphUnit] = parameters.displayFormat;
+  }
   if (occupancyChart) {
     occupancyChart.destroy();
   }
   let ctx = document.getElementById("occupancyChart").getContext('2d');
-  occupancyChart = new Chart(ctx, options);
+  occupancyChart = new Chart(ctx, graphOptions);
+}
+
+//----------------------------------------------------------------------------
+//                              HTML Functions
+//----------------------------------------------------------------------------
+
+function toggleGraphOptionVisibility() {
+  let graphOptionsElement = document.getElementById("graph_options");
+  let graphOptionsVisibilityElement = document.getElementById("graph_options_visibility");
+  if (graphOptionsElement.style.display === "none") {
+    graphOptionsElement.style.display = "block";
+    graphOptionsVisibilityElement.innerHTML = "Hide Graph Options";
+  } else {
+    graphOptionsElement.style.display = "none";
+    graphOptionsVisibilityElement.innerHTML = "Show Graph Options";
+  }
 }

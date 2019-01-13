@@ -16,7 +16,8 @@
 
 <body>
     <h1> St. Andrews Uni Gym Occupancy </h1>
-    <div id="buttons">
+    <div id="default_queries">
+      <div class="underline"> Default Queries </div>
       <button onclick="requestLast24Hrs()"> Last 24 hrs </button>
       <button onclick="requestLast48Hrs()"> Last 48 hrs </button>
       <button onclick="requestToday()"> Today </button>
@@ -28,12 +29,38 @@
       <button onclick="requestAll()"> All </button>
     </div>
     <br>
-    <div id="inputBoxes">
+    <div id="query_range">
+      <div class="underline"> Query Specific Range </div>
       From:
-      <input type="text" id="from">
+      <input type="date" id="from_date">
+      <input type="time" id="from_time"><br>
       To:
-      <input type="text" id="to">
+      <input type="date" id="to_date">
+      <input type="time" id="to_time"><br>
+
+      <button onclick="toggleGraphOptionVisibility()" id="graph_options_visibility"> Show Graph Options</button>
+      <div id="graph_options" style="display: none">
+        Unit:
+        <select id="graph_unit">
+            <option value=""> Automatic </option>
+            <option value="millisecond"> Millisecond </option>
+            <option value="second"> Second </option>
+            <option value="minute"> Minute </option>
+            <option value="hour"> Hour </option>
+            <option value="day"> Day </option>
+            <option value="week"> Week </option>
+            <option value="month"> Month </option>
+            <option value="quarter"> Quarter </option>
+            <option value="year"> Year </option>
+        </select> <br>
+        Display Format for Unit (<a href="http://momentjs.com/docs/#/displaying/format/">Click for available formats</a>):
+        <input type="text" id="display_format">
+      </div>
+
+      <br>
       <button onclick="requestInputBoxRange()"> Submit </button>
+      
+      
     </div>
 
     <canvas id="occupancyChart" width="400" height="200"></canvas>
