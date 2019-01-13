@@ -150,7 +150,7 @@ function graphData(data, parameters) {
     type: 'line',
     data: {
         labels: data.map(function(element) {
-          return new Date(element.datetime).toLocaleString();
+          return new Date(element.datetime);
         }),
         datasets: [{
             label: 'Occupancy (%)',
@@ -163,6 +163,11 @@ function graphData(data, parameters) {
         }]
     },
     options: {
+      elements: {
+        point: {
+            radius: 0 
+          }
+        },
       scales: {
           yAxes: [{
               ticks: {
@@ -177,8 +182,8 @@ function graphData(data, parameters) {
               //displayFormats: {
               //  minute: 'h:mm a'
               //},
-              min: new Date(parameters.from).toLocaleString(),
-              max: new Date(parameters.to).toLocaleString()
+              min: new Date(parameters.from),
+              max: new Date(parameters.to)
             },
           }]
         }
