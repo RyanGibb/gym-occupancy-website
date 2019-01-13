@@ -9,7 +9,7 @@ let wsUrl = "ws://" + location.hostname + ":" + location.port;
 let ws = new WebSocket(wsUrl);
 
 ws.onopen = function() {
-  requestLast48Hrs();
+  requestLast24Hrs();
 }
 
 ws.onclose = function() {
@@ -36,9 +36,9 @@ function sendMessage(messageString) {
 //                              Request Functions
 //----------------------------------------------------------------------------
 
-function requestRange(from, to) {
+function requestRange(from, to, unit) {
     let request = "range";
-    let parameters = {from, to};
+    let parameters = {from, to, unit};
     let message = {request, parameters};
     let messageString = JSON.stringify(message);
     sendMessage(messageString);
@@ -53,6 +53,10 @@ function requestLastNumberOfHours(numberOfHours) {
   requestRange(from, to);
 }
 
+function requestLast24Hrs() {
+  requestLastNumberOfHours(24);
+}
+
 function requestLast48Hrs() {
   requestLastNumberOfHours(48);
 }
@@ -63,7 +67,7 @@ function requestToday() {
   from.setHours(0, 0, 0, 0);
   let to = new Date(now);
   to.setHours(23, 59, 59, 999);
-  requestRange(from, to);
+  requestRange(from, to, "hour");
 }
 
 function requestYesterday() {
@@ -74,7 +78,7 @@ function requestYesterday() {
   let to = new Date(now);
   to.setHours(23, 59, 59, 999);
   to.setDate(to.getDate()-1);
-  requestRange(from, to);
+  requestRange(from, to, "hour");
 }
 
 function requestThisWeek() {
@@ -88,7 +92,7 @@ function requestThisWeek() {
   let to = new Date(now)
   to.setDate(saturday);
   to.setHours(23, 59, 59, 999);
-  requestRange(from, to);
+  requestRange(from, to, "day");
 }
 
 function requestLastWeek() {
@@ -102,25 +106,29 @@ function requestLastWeek() {
   let to = new Date(now)
   to.setDate(lastSatuday);
   to.setHours(23, 59, 59, 999);
-  requestRange(from, to);
+  requestRange(from, to, "day");
 }
 
 function requestThisMonth() {
   let now = new Date();
-  let from = new Date(now.setDate(1));
-  let to = new Date(now.setMonth(now.getMonth() + 1, 0));
+  let from = new Date(now);
+  from.setDate(1);
   from.setHours(0, 0, 0, 0);
+  let to = new Date(now);
+  to.setMonth(now.getMonth() + 1, 0);
   to.setHours(23, 59, 59, 999);
-  requestRange(from, to);
+  requestRange(from, to, "day");
 }
 
 function requestLastMonth() {
   let now = new Date();
-  let from = new Date(now.setMonth(now.getMonth() - 1, 1));
-  let to = new Date(now.setMonth(now.getMonth(), 0));
+  let from = new Date();
+  from.setMonth(from.getMonth() - 1, 1);
   from.setHours(0, 0, 0, 0);
+  let to = new Date();
+  to.setMonth(now.getMonth(), 0);
   to.setHours(23, 59, 59, 999);
-  requestRange(from, to);
+  requestRange(from, to, "day");
 }
 
 function requestAll() {
@@ -178,10 +186,14 @@ function graphData(data, parameters) {
           xAxes: [{
             type: 'time',
             distribution: 'linear',
+            ticks: {
+              source: 'auto'
+            },
+            displayFormats: {
+              day: "MMM D/ddd"
+            },
             time: {
-              //displayFormats: {
-              //  minute: 'h:mm a'
-              //},
+              unit: parameters.unit,
               min: new Date(parameters.from),
               max: new Date(parameters.to)
             },
