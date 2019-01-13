@@ -79,28 +79,28 @@ function requestYesterday() {
 
 function requestThisWeek() {
   let now = new Date();
-  // day of the month minus day of the week, plus one to get to monday
-  let monday = now.getDate() - now.getDay() + 1;
-  let sunday = monday + 6;
+  // day of the month minus day of the week
+  let sunday = now.getDate() - now.getDay();
+  let saturday = sunday + 6;
   let from = new Date(now);
-  from.setDate(monday);
+  from.setDate(sunday);
   from.setHours(0, 0, 0, 0);
   let to = new Date(now)
-  to.setDate(sunday);
+  to.setDate(saturday);
   to.setHours(23, 59, 59, 999);
   requestRange(from, to);
 }
 
 function requestLastWeek() {
   let now = new Date();
-  // day of the month minus day of the week, plus one to get to monday, minus 7 to get to last week
-  let lastMonday = now.getDate() - now.getDay() + 1 - 7;
-  let lastSunday = lastMonday + 6;
+  // day of the month minus day of the week, minus 7 to get to last week
+  let lastSunday = now.getDate() - now.getDay() - 7;
+  let lastSatuday = lastSunday + 6;
   let from = new Date(now);
-  from.setDate(lastMonday);
+  from.setDate(lastSunday);
   from.setHours(0, 0, 0, 0);
   let to = new Date(now)
-  to.setDate(lastSunday);
+  to.setDate(lastSatuday);
   to.setHours(23, 59, 59, 999);
   requestRange(from, to);
 }
