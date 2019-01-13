@@ -163,6 +163,11 @@ function graphData(data, parameters) {
         }]
     },
     options: {
+      elements: {
+        point: {
+            radius: 0 
+          }
+        },
       scales: {
           yAxes: [{
               ticks: {
