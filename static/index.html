@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title> St. Andrews Uni Gym Occupancy </title>
+  <meta name="author" content="Ryan Gibb">
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link href="style.css" rel="stylesheet">
+  <!--see https://cdnjs.com/libraries/Chart.js-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js"></script>
+  <script src="script.js"></script>
+</head>
+
+<body>
+    <h1> St. Andrews Uni Gym Occupancy </h1>
+    <div id="default_queries">
+      <div class="underline"> Default Queries </div>
+      <button onclick="requestLast24Hrs()"> Last 24 hrs </button>
+      <button onclick="requestLast48Hrs()"> Last 48 hrs </button>
+      <button onclick="requestToday()"> Today </button>
+      <button onclick="requestYesterday()"> Yesterday </button>
+      <button onclick="requestThisWeek()"> This Week </button>
+      <button onclick="requestLastWeek()"> Last Week </button>
+      <button onclick="requestThisMonth()"> This Month </button>
+      <button onclick="requestLastMonth()"> Last Month </button>
+      <button onclick="requestAll()"> All </button>
+    </div>
+    <br>
+    <div id="query_range">
+      <div class="underline"> Query Specific Range </div>
+      From:
+      <input type="date" id="from_date">
+      <input type="time" id="from_time"><br>
+      To:
+      <input type="date" id="to_date">
+      <input type="time" id="to_time"><br>
+
+      <button onclick="toggleGraphOptionVisibility()" id="graph_options_visibility"> Show Graph Options</button>
+      <div id="graph_options" style="display: none">
+        Unit:
+        <select id="graph_unit">
+            <option value=""> Automatic </option>
+            <option value="millisecond"> Millisecond </option>
+            <option value="second"> Second </option>
+            <option value="minute"> Minute </option>
+            <option value="hour"> Hour </option>
+            <option value="day"> Day </option>
+            <option value="week"> Week </option>
+            <option value="month"> Month </option>
+            <option value="quarter"> Quarter </option>
+            <option value="year"> Year </option>
+        </select> <br>
+        Display Format for Unit (<a href="http://momentjs.com/docs/#/displaying/format/">Click for available formats</a>):
+        <input type="text" id="display_format">
+      </div>
+
+      <br>
+      <button onclick="requestInputBoxRange()"> Submit </button>
+      
+      
+    </div>
+
+    <canvas id="occupancyChart" width="400" height="200"></canvas>
+</body>
+
+</html>
